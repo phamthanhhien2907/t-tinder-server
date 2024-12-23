@@ -5,6 +5,7 @@ const {
   getCollectionDifference,
   deleteCollection,
   updateCollection,
+  updateCollectionById,
 } = require("../controllers/collectionController");
 const multer = require("multer");
 const { verifyToken, isAdmin } = require("../middlewares/verifyToken");
@@ -24,6 +25,15 @@ router.get("/:id", getCollectionById);
 router.get("/different/:id", getCollectionDifference);
 router.delete("/delete/:id", [verifyToken, isAdmin], deleteCollection);
 router.put("/update/:id/:userId", [verifyToken], updateCollection);
+router.put(
+  "/updateCollection/:id",
+  [verifyToken, isAdmin],
+  upload.fields([
+    { name: "images", maxCount: 1 },
+    { name: "videos", maxCount: 1 },
+  ]),
+  updateCollectionById
+);
 router.post(
   "/create",
   [verifyToken, isAdmin],

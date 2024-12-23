@@ -10,6 +10,7 @@ const {
   countdown,
   deleteLotteryById,
   updateTimer,
+  countdownTimer,
 } = require("../controllers/evaluateController");
 const { verifyToken, isAdmin } = require("../middlewares/verifyToken");
 const router = require("express").Router();
@@ -17,6 +18,7 @@ const multer = require("multer");
 
 router.get("/lottery", getAllLottery);
 router.put("/lottery/updateTime", updateTimer);
+router.get("/lottery/countdownTimer", countdownTimer);
 
 router.delete("/lottery/delete/:id", [verifyToken, isAdmin], deleteLotteryById);
 

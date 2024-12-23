@@ -31,7 +31,7 @@ const getCurrent = async (req, res) => {
 };
 const getAllUsers = async (req, res) => {
   try {
-    const user = await users.find();
+    const user = await users.find().sort({ createdAt: -1 });
     return res.status(200).json({
       success: user ? true : false,
       user,
@@ -155,17 +155,22 @@ const withDrawAndDepositUser = async (req, res) => {
     const { draw } = req.body;
 
     const user = await users.findById(id);
-
     if (!draw) {
       throw new Error("Vui lòng nhập số tiền");
     }
+    if (!user) {
+      throw new Error("Không tìm thấy người dùng");
+    }
 
     if (user?.withDraw >= Number(draw)) {
-      data = await users.findByIdAndUpdate(id, {
-        // withDraw: user?.withDraw - Number(draw),
-        withDraw: user?.withDraw,
-      });
-      data.save();
+      data = await users.findByIdAndUpdate(
+        id,
+        {
+          // withDraw: user?.withDraw - Number(draw),
+          withDraw: user?.withDraw,
+        },
+        { new: true }
+      );
 
       // const existsWithDraw = await withDraw.findOne({ users: id });
       // let transform;
@@ -186,7 +191,7 @@ const withDrawAndDepositUser = async (req, res) => {
       // }
       await withDraw.create({
         withDraw: Number(draw),
-        users: id,
+        users: user?._id,
         createdAt: Date.now(),
       });
     } else {

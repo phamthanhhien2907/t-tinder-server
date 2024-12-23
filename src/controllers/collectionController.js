@@ -7,14 +7,36 @@ const createCollection = async (req, res) => {
 
     const newCollection = await collection.create({
       title,
-      image: req.files.images[0].filename,
-      video: req.files.videos[0].filename,
+      image: req?.files?.images[0]?.filename,
+      video: req?.files?.videos[0]?.filename,
       category,
     });
     newCollection.save();
     return res.status(200).json({
       success: newCollection
         ? "Successfully created"
+        : "Failed to create collection",
+      newCollection,
+    });
+  } catch (error) {
+    return res.status(500).json(error.message);
+  }
+};
+const updateCollectionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, image, video, category } = req.body;
+    console.log(id, title, image, video, category);
+    const newCollection = await collection.findByIdAndUpdate(id, {
+      title,
+      image: req?.files?.images[0]?.filename,
+      video: req?.files?.videos[0]?.filename,
+      category,
+    });
+    console.log(newCollection);
+    return res.status(200).json({
+      success: newCollection
+        ? "Successfully updated"
         : "Failed to create collection",
       newCollection,
     });
@@ -65,6 +87,7 @@ const getCollectionById = async (req, res) => {
 const updateCollection = async (req, res) => {
   try {
     const { id, userId } = req.params;
+    console.log(id, userId);
     let data = await collection.findById(id);
     let user = await users.findById(userId);
     if (!user) throw new Error("User not found");
@@ -112,4 +135,5 @@ module.exports = {
   updateCollection,
   deleteCollection,
   getCollectionDifference,
+  updateCollectionById,
 };

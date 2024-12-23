@@ -4,6 +4,29 @@ const getRandomTwo = require("../utils/randomLottery");
 var LocalStorage = require("node-localstorage").LocalStorage,
   localStorage = new LocalStorage("./scratch");
 let array = ["A", "B", "C", "D"];
+let endTime = new Date().getTime() + 3 * 60 * 1000;
+const cron = require("node-cron");
+// Tạo cron job để reset thời gian đếm ngược mỗi 3 phút
+cron.schedule("*/3 * * * *", async () => {
+  console.log("Reset thời gian đếm ngược...");
+  endTime = new Date().getTime() + 3 * 60 * 1000;
+  // await updateLotteryAndUsers();
+});
+const countdownTimer = async (req, res) => {
+  const currentTime = new Date().getTime();
+  const timeLeft = endTime - currentTime;
+
+  if (timeLeft <= 0) {
+    endTime = currentTime + 3 * 60 * 1000;
+    return res.status(200).json({
+      timeLeft: 3 * 60 * 1000,
+    });
+  } else {
+    return res.status(200).json({
+      timeLeft,
+    });
+  }
+};
 const updateTimer = async (req, res) => {
   try {
     let findRoom;
@@ -15,13 +38,11 @@ const updateTimer = async (req, res) => {
     //   localStorage.setItem("endTime", endTime);
     // }
     const updatePromises = findRoom.map(async (find) => {
-      // Perform updates inside the promise
+      const newTimer = new Date().getTime() + 3 * 60 * 1000;
       return await evaluate.findOneAndUpdate(
         { room: find?.room },
-        {
-          timer: new Date().getTime() + 3 * 60 * 1000,
-        },
-        { new: true }
+        { $set: { timer: newTimer } },
+        { new: true, upsert: true }
       );
     });
 
@@ -36,7 +57,7 @@ const countdown = async (req, res) => {
     findRoom = await evaluate.find();
     console.log(findRoom[0]?.resultUpdate.length);
     if (findRoom?.length === 0) throw new Error("Hiện tại chưa có phòng nào");
-    const updatePromises = findRoom.map(async (find) => {
+    const updatePromises = findRoom?.map(async (find) => {
       // Perform updates inside the promise
       return await evaluate.findOneAndUpdate(
         { room: find?.room },
@@ -74,227 +95,388 @@ const countdown = async (req, res) => {
     return res.status(500).json(error.message);
   }
 };
+// const updateLotteryAndUsers = async (req, res) => {
+//   try {
+//     const { userId, roomId } = req.params;
+//     let findRoom;
+//     findRoom = await evaluate.find();
+//     if (findRoom?.length === 0) throw new Error("Hiện tại chưa có phòng nào");
+//     const updatePromises = findRoom.map(async (find) => {
+//       return await evaluate.findOneAndUpdate(
+//         { room: find?.room },
+//         {
+//           periodNumber: [...find.periodNumber, find.periodNumber.length + 1],
+//           result: [
+//             ...find.result,
+//             find?.resultUpdate?.length > 0
+//               ? find.resultUpdate.at(-1)
+//               : getRandomTwo(array),
+//           ],
+//         },
+//         { new: true }
+//       );
+//     });
+
+//     await Promise.all(updatePromises);
+//     const removedPromises = findRoom.map(async (find) => {
+//       // Perform updates inside the promise
+//       return await evaluate.findOneAndUpdate(
+//         { room: find?.room },
+//         {
+//           $pullAll: {
+//             resultUpdate: find?.resultUpdate,
+//           },
+//         },
+//         { new: true }
+//       );
+//     });
+//     await Promise.all(removedPromises);
+//     let data = await evaluate.findOne({ room: roomId });
+//     let getLottery = await evaluate.find();
+//     const findResults = getLottery?.map((eva) => {
+//       return eva?.result?.at(-1)?.sort();
+//     });
+//     let user = await users.findById(userId);
+//     const findUser = data?.users.filter((user) => {
+//       return user?.UserId === userId;
+//     });
+//     const findUsers = getLottery?.map((el) =>
+//       el?.users?.filter((user) => user?.UserId === userId)
+//     );
+//     const findResult = data?.result?.at(-1)?.sort();
+//     let filterPeriodNumber = getLottery?.map((el) => el?.periodNumber.at(-1));
+//     let filterUserChosen = [];
+//     let accOneLottery = findUsers?.map((el, indexValue) =>
+//       el?.filter((user, index) => {
+//         if (
+//           filterPeriodNumber?.includes(user?.periodNumber) &&
+//           user?.result?.length === 1
+//         ) {
+//           user.resultValue = findResults[indexValue];
+
+//           let resultNew = user?.result?.map((rs, index) => {
+//             return findResults[0]?.includes(rs);
+//           });
+//           return filterUserChosen.push(resultNew);
+//         }
+//       })
+//     );
+
+//     let filterUserChosen1 = [];
+//     let acc = findUsers?.map((el, indexValue) =>
+//       el?.filter((user) => {
+//         if (
+//           filterPeriodNumber?.includes(user?.periodNumber) &&
+//           user?.result?.length === 2
+//         ) {
+//           user.resultValue = findResults[indexValue];
+
+//           let resultNew = user?.result?.map((rs) => {
+//             return findResults[0]?.includes(rs);
+//           });
+//           return filterUserChosen1.push(resultNew);
+//         }
+//       })
+//     );
+//     let hasOnlyTrue;
+//     let lostMoney;
+
+//     function hasCommonCharacters(str1, str2) {
+//       const set1 = new Set(str1);
+//       const set2 = new Set(str2);
+
+//       const intersection = new Set([...set1].filter((x) => set2.has(x)));
+
+//       return intersection.size > 0;
+//     }
+//     let newUpdateOneRoom = accOneLottery?.map((el) =>
+//       el?.filter(async (rs) => {
+//         if (hasCommonCharacters(rs?.resultValue, rs?.result)) {
+//           console.log("Ăn");
+//           await users.findByIdAndUpdate(
+//             user?._id,
+//             {
+//               withDraw: user?.withDraw + rs?.money,
+//             },
+//             { new: true }
+//           );
+//         } else {
+//           console.log("Thua");
+//           await users.findByIdAndUpdate(
+//             user?._id,
+//             {
+//               withDraw: user?.withDraw - rs?.money,
+//             },
+//             { new: true }
+//           );
+//         }
+//       })
+//     );
+//     await Promise.all(newUpdateOneRoom);
+//     let newUpdateThanTwoRoom = acc?.map(async (el) =>
+//       el?.filter(async (rs) => {
+//         if (JSON.stringify(rs?.resultValue) === JSON.stringify(rs?.result)) {
+//           console.log("Ăn 2 cửa");
+//           const newData3 = await users.findByIdAndUpdate(
+//             user?._id,
+//             {
+//               withDraw: user?.withDraw + rs?.money * 2,
+//             },
+//             { new: true }
+//           );
+//           console.log(newData3);
+//         } else if (hasCommonCharacters(rs?.resultValue, rs?.result)) {
+//           console.log("Huề");
+//           const newData = await users.findByIdAndUpdate(
+//             user?._id,
+//             {
+//               withDraw: user?.withDraw,
+//             },
+//             { new: true }
+//           );
+//           console.log(newData);
+//         } else {
+//           console.log("Thua 2 cửa");
+//           const newData4 = await users.findByIdAndUpdate(
+//             user?._id,
+//             {
+//               withDraw: user?.withDraw - rs?.money * 2,
+//             },
+//             { new: true }
+//           );
+//           console.log(newData4);
+//         }
+//       })
+//     );
+//     await Promise.all(newUpdateThanTwoRoom);
+
+//     return res.status(200).json({
+//       success: true,
+//     });
+//   } catch (error) {
+//     console.log(error.message);
+//   }
+// };
+const updateRooms = async () => {
+  const rooms = await evaluate.find();
+  if (!rooms.length) throw new Error("Hiện tại chưa có phòng nào");
+
+  const updateRoomPromises = rooms.map(async (room) => {
+    const newPeriodNumber = room.periodNumber.length + 1;
+    const newResult =
+      room.resultUpdate?.length > 0
+        ? room.resultUpdate.at(-1)
+        : getRandomTwo(array);
+
+    return evaluate.findOneAndUpdate(
+      { room: room.room },
+      {
+        $push: { periodNumber: newPeriodNumber, result: newResult },
+        $pullAll: { resultUpdate: room.resultUpdate },
+      },
+      { new: true }
+    );
+  });
+
+  await Promise.all(updateRoomPromises);
+};
+const updateUserBalance = async (userId, roomId) => {
+  const targetRoom = await evaluate.findOne({ room: roomId });
+  const user = await users.findById(userId);
+
+  if (!targetRoom || !user) {
+    throw new Error("Không tìm thấy phòng hoặc người chơi");
+  }
+
+  const rooms = await evaluate.find();
+  const periodNumbers = rooms.map((room) => room.periodNumber.at(-1));
+  const results = rooms.map((room) => room.result.at(-1).sort());
+
+  const userResults = rooms.flatMap((room, index) => {
+    return room.users
+      .filter((u) => u.UserId === userId)
+      .map((user) => ({
+        userResult: user.result,
+        periodNumber: periodNumbers[index],
+        roomResult: results[index],
+      }));
+  });
+
+  const hasCommonElements = (arr1, arr2) =>
+    arr1.some((el) => arr2.includes(el));
+
+  const updateUserBalance = async (
+    user,
+    userResult,
+    roomResult,
+    multiplier = 1
+  ) => {
+    const isWin = hasCommonElements(userResult, roomResult);
+    const adjustment = (isWin ? multiplier : -multiplier) * userResult.length;
+    const newBalance = user.withDraw + adjustment;
+
+    await users.findByIdAndUpdate(
+      user._id,
+      { withDraw: newBalance },
+      { new: true }
+    );
+    return isWin;
+  };
+
+  const balanceUpdates = userResults.map(async ({ userResult, roomResult }) => {
+    const multiplier = userResult.length === 2 ? 2 : 1;
+    const isWin = await updateUserBalance(
+      user,
+      userResult,
+      roomResult,
+      multiplier
+    );
+    console.log(
+      isWin
+        ? `Người chơi thắng ${multiplier === 2 ? "2 cửa" : "1 cửa"}`
+        : `Người chơi thua ${multiplier === 2 ? "2 cửa" : "1 cửa"}`
+    );
+  });
+
+  await Promise.all(balanceUpdates);
+};
 const updateLotteryAndUsers = async (req, res) => {
   try {
     const { userId, roomId } = req.params;
-    let findRoom;
-    findRoom = await evaluate.find();
-    console.log(findRoom[0]?.resultUpdate.length);
-    if (findRoom?.length === 0) throw new Error("Hiện tại chưa có phòng nào");
-    const updatePromises = findRoom.map(async (find) => {
-      // Perform updates inside the promise
-      return await evaluate.findOneAndUpdate(
-        { room: find?.room },
-        {
-          periodNumber: [...find.periodNumber, find.periodNumber.length + 1],
-          result: [
-            ...find.result,
-            find?.resultUpdate?.length > 0
-              ? find.resultUpdate.at(-1)
-              : getRandomTwo(array),
-          ],
-        },
-        { new: true }
-      );
-    });
 
-    await Promise.all(updatePromises);
-    const removedPromises = findRoom.map(async (find) => {
-      // Perform updates inside the promise
-      return await evaluate.findOneAndUpdate(
-        { room: find?.room },
-        {
-          $pullAll: {
-            resultUpdate: find?.resultUpdate,
-          },
-        },
-        { new: true }
-      );
-    });
-    await Promise.all(removedPromises);
-    let data = await evaluate.findOne({ room: roomId });
-    let getLottery = await evaluate.find();
-    const findResults = getLottery?.map((eva) => {
-      return eva?.result?.at(-1)?.sort();
-    });
-    let user = await users.findById(userId);
-    const findUser = data?.users.filter((user) => {
-      return user?.UserId === userId;
-    });
-    const findUsers = getLottery?.map((el) =>
-      el?.users?.filter((user) => user?.UserId === userId)
-    );
-    const findResult = data?.result?.at(-1)?.sort();
-    let filterPeriodNumber = getLottery?.map((el) => el?.periodNumber.at(-1));
-    let filterUserChosen = [];
-    let accOneLottery = findUsers?.map((el, indexValue) =>
-      el?.filter((user, index) => {
-        if (
-          filterPeriodNumber?.includes(user?.periodNumber) &&
-          user?.result?.length === 1
-        ) {
-          user.resultValue = findResults[indexValue];
-
-          let resultNew = user?.result?.map((rs, index) => {
-            return findResults[0]?.includes(rs);
-          });
-          return filterUserChosen.push(resultNew);
-        }
-      })
-    );
-
-    let filterUserChosen1 = [];
-    let acc = findUsers?.map((el, indexValue) =>
-      el?.filter((user) => {
-        if (
-          filterPeriodNumber?.includes(user?.periodNumber) &&
-          user?.result?.length === 2
-        ) {
-          user.resultValue = findResults[indexValue];
-
-          let resultNew = user?.result?.map((rs) => {
-            return findResults[0]?.includes(rs);
-          });
-          return filterUserChosen1.push(resultNew);
-        }
-      })
-    );
-    let hasOnlyTrue;
-    let lostMoney;
-
-    function hasCommonCharacters(str1, str2) {
-      const set1 = new Set(str1);
-      const set2 = new Set(str2);
-
-      const intersection = new Set([...set1].filter((x) => set2.has(x)));
-
-      return intersection.size > 0;
+    const requestKey = `${userId}-${roomId}`;
+    if (global.activeRequests?.has(requestKey)) {
+      return res
+        .status(429)
+        .json({ message: "Request is already being processed" });
     }
-    let newUpdateOneRoom = accOneLottery?.map((el) =>
-      el?.filter(async (rs) => {
-        if (hasCommonCharacters(rs?.resultValue, rs?.result)) {
-          console.log("Ăn");
-          await users.findByIdAndUpdate(
-            user?._id,
-            {
-              withDraw: user?.withDraw + rs?.money,
-            },
-            { new: true }
-          );
-        } else {
-          console.log("Thua");
-          await users.findByIdAndUpdate(
-            user?._id,
-            {
-              withDraw: user?.withDraw - rs?.money,
-            },
-            { new: true }
-          );
-        }
-      })
-    );
-    await Promise.all(newUpdateOneRoom);
-    let newUpdateThanTwoRoom = acc?.map(async (el) =>
-      el?.filter(async (rs) => {
-        if (JSON.stringify(rs?.resultValue) === JSON.stringify(rs?.result)) {
-          console.log("Ăn 2 cửa");
-          const newData3 = await users.findByIdAndUpdate(
-            user?._id,
-            {
-              withDraw: user?.withDraw + rs?.money * 2,
-            },
-            { new: true }
-          );
-          console.log(newData3);
-        } else if (hasCommonCharacters(rs?.resultValue, rs?.result)) {
-          console.log("Huề");
-          const newData = await users.findByIdAndUpdate(
-            user?._id,
-            {
-              withDraw: user?.withDraw,
-            },
-            { new: true }
-          );
-          console.log(newData);
-        } else {
-          console.log("Thua 2 cửa");
-          const newData4 = await users.findByIdAndUpdate(
-            user?._id,
-            {
-              withDraw: user?.withDraw - rs?.money * 2,
-            },
-            { new: true }
-          );
-          console.log(newData4);
-        }
-      })
-    );
-    await Promise.all(newUpdateThanTwoRoom);
+    global.activeRequests = global.activeRequests || new Set();
+    global.activeRequests.add(requestKey);
 
-    // const filterAcc = acc?.filter((accFil) => accFil.length > 0);
-    // if (filterUserChosen?.length > 0) {
-    //   hasOnlyTrue = filterUserChosen.every((values) => {
-    //     if (values) {
-    //       return values.some((value) => value === true);
-    //     }
-    //   });
-    //   lostMoney = filterUserChosen.every((values) => {
-    //     if (values) {
-    //       return values.every((value) => value === false);
-    //     }
-    //   });
-    // }
+    await updateRooms();
+    await updateUserBalance(userId, roomId);
 
-    // if (hasOnlyTrue) {
-    //   console.log("Ăn 1 cửa");
-    //   const newData1 = await users.findByIdAndUpdate(
-    //     user?._id,
-    //     {
-    //       withDraw: user?.withDraw + findUser?.at(-1)?.money,
-    //     },
-    //     { new: true }
-    //   );
-    //   console.log(newData1);
-    // }
-    // if (lostMoney) {
-    //   console.log("Thua 1 cửa");
-    //   const newData2 = await users.findByIdAndUpdate(
-    //     user?._id,
-    //     {
-    //       withDraw: user?.withDraw - findUser?.at(-1)?.money,
-    //     },
-    //     { new: true }
-    //   );
-    //   console.log(newData2);
-    // }
-    // if (hasOnlyTrue1) {
-    //   console.log("Ăn 2 cửa");
-    //   const newData3 = await users.findByIdAndUpdate(user?._id, {
-    //     withDraw: user?.withDraw + findUser?.at(-1)?.money * 2,
-    //   });
-    //   console.log(newData3);
-    // }
-    // if (hasOnlyTrue2) {
-    //   console.log("Huề");
-    //   const newData = await users.findByIdAndUpdate(user?._id, {
-    //     withDraw: user?.withDraw,
-    //   });
-    //   console.log(newData);
-    // }
-    // if (hasOnlyTrue3) {
-    //   console.log("Thua 2 cửa");
-    //   const newData4 = await users.findByIdAndUpdate(user?._id, {
-    //     withDraw: user?.withDraw - findUser?.at(-1)?.money * 2,
-    //   });
-    //   console.log(newData4);
-    // }
-    return res.status(200).json({
-      success: true,
-    });
+    global.activeRequests.delete(requestKey);
+
+    return res.status(200).json({ success: true });
   } catch (error) {
-    console.log(error.message);
+    console.error("Error in updateLotteryAndUsers:", error.message);
+    return res.status(500).json({ error: error.message });
   }
 };
+// const updateLotteryAndUsers = async (req, res) => {
+//   try {
+//     const { userId, roomId } = req.params;
+
+//     // Kiểm tra nếu yêu cầu đang được xử lý
+//     const requestKey = `${userId}-${roomId}`;
+//     if (global.activeRequests?.has(requestKey)) {
+//       return res
+//         .status(429)
+//         .json({ message: "Request is already being processed" });
+//     }
+//     global.activeRequests = global.activeRequests || new Set();
+//     global.activeRequests.add(requestKey);
+
+//     // Lấy danh sách phòng
+//     const rooms = await evaluate.find();
+//     if (!rooms.length) throw new Error("Hiện tại chưa có phòng nào");
+
+//     // Cập nhật periodNumber và result cho từng phòng
+//     const updateRoomPromises = rooms.map(async (room) => {
+//       const newPeriodNumber = room.periodNumber.length + 1;
+//       const newResult =
+//         room.resultUpdate?.length > 0
+//           ? room.resultUpdate.at(-1)
+//           : getRandomTwo(array);
+
+//       return evaluate.findOneAndUpdate(
+//         { room: room.room },
+//         {
+//           $push: { periodNumber: newPeriodNumber, result: newResult },
+//           $pullAll: { resultUpdate: room.resultUpdate },
+//         },
+//         { new: true }
+//       );
+//     });
+
+//     await Promise.all(updateRoomPromises);
+
+//     // Lấy thông tin phòng và người chơi
+//     const targetRoom = await evaluate.findOne({ room: roomId });
+//     const user = await users.findById(userId);
+
+//     if (!targetRoom || !user) {
+//       throw new Error("Không tìm thấy phòng hoặc người chơi");
+//     }
+
+//     const periodNumbers = rooms.map((room) => room.periodNumber.at(-1));
+//     const results = rooms.map((room) => room.result.at(-1).sort());
+
+//     // Lấy kết quả xổ số của từng người chơi
+//     const userResults = rooms.flatMap((room, index) => {
+//       return room.users
+//         .filter((u) => u.UserId === userId)
+//         .map((user) => ({
+//           userResult: user.result,
+//           periodNumber: periodNumbers[index],
+//           roomResult: results[index],
+//         }));
+//     });
+
+//     // Hàm kiểm tra phần tử chung giữa 2 mảng
+//     const hasCommonElements = (arr1, arr2) =>
+//       arr1.some((el) => arr2.includes(el));
+
+//     // Cập nhật số dư của người chơi dựa trên kết quả
+//     const updateUserBalance = async (
+//       user,
+//       userResult,
+//       roomResult,
+//       multiplier = 1
+//     ) => {
+//       const isWin = hasCommonElements(userResult, roomResult);
+//       const adjustment = (isWin ? multiplier : -multiplier) * userResult.length;
+//       const newBalance = user.withDraw + adjustment;
+
+//       await users.findByIdAndUpdate(
+//         user._id,
+//         { withDraw: newBalance },
+//         { new: true }
+//       );
+//       return isWin;
+//     };
+
+//     // Xử lý kết quả của từng người chơi
+//     const balanceUpdates = userResults.map(
+//       async ({ userResult, roomResult }) => {
+//         const multiplier = userResult.length === 2 ? 2 : 1;
+//         const isWin = await updateUserBalance(
+//           user,
+//           userResult,
+//           roomResult,
+//           multiplier
+//         );
+//         console.log(
+//           isWin
+//             ? `Người chơi thắng ${multiplier === 2 ? "2 cửa" : "1 cửa"}`
+//             : `Người chơi thua ${multiplier === 2 ? "2 cửa" : "1 cửa"}`
+//         );
+//       }
+//     );
+
+//     await Promise.all(balanceUpdates);
+
+//     // Xóa key request khỏi danh sách active
+//     global.activeRequests.delete(requestKey);
+
+//     return res.status(200).json({ success: true });
+//   } catch (error) {
+//     console.error("Error in updateLotteryAndUsers:", error.message);
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
 const createLottery = async (req, res) => {
   try {
     const { period, result, room } = req.body;
@@ -354,7 +536,6 @@ const updateLottery = async (req, res) => {
     const { userId, roomId } = req.params;
     let data = await evaluate.findOne({ room: roomId });
     const { money, result } = req.body;
-    console.log(money);
     if (!result.length > 0)
       return res.status(400).json({
         message: "Vui lòng chọn cược",
@@ -479,4 +660,5 @@ module.exports = {
   countdown,
   deleteLotteryById,
   updateTimer,
+  countdownTimer,
 };

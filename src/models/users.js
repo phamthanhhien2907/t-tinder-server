@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema(
     },
     result: Array,
     periodNumber: Array,
-    createdAt: Array,
+
     deposit: {
       type: Number,
       default: 0,
