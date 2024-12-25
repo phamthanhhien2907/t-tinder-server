@@ -19,7 +19,10 @@ const evaluateSchema = new mongoose.Schema(
 
     users: [
       {
-        UserId: String,
+        UserId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User", // Tên của model người dùng
+        },
         result: Array,
         periodNumber: Number,
         resultValue: Array,

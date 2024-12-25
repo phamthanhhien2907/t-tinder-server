@@ -48,7 +48,7 @@ const login = async (req, res) => {
 };
 const register = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, code } = req.body;
     console.log(username, password);
     if (!username || !password)
       throw new Error("Bạn chưa điền tên đăng nhập hoặc mật khẩu");
@@ -58,6 +58,7 @@ const register = async (req, res) => {
     const newUser = await users.create({
       username: username,
       password: hashPassword(password),
+      code: code?.toUpperCase(),
     });
 
     newUser.save();

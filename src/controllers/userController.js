@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const withDraw = require("../models/withDraw");
 const timeEnd = require("../models/timeEnd");
+const deposit = require("../models/deposit");
 
 require("dotenv").config();
 const hashPassword = (password) =>
@@ -124,21 +125,36 @@ const updatedUser = async (req, res) => {
 const DepositUser = async (req, res) => {
   try {
     let data;
+    let createDeposit;
     const { id } = req.params;
-    const { desposit, vip } = req.body;
-    if (!desposit) throw new Error("Vui lòng nhập số tiền");
+    const { desposit, despositMinutes, vip } = req.body;
+    if (!desposit && !despositMinutes)
+      throw new Error("Vui lòng nhập số tiền cần nộp hoặc trừ");
     const user = await users.findById(id);
     if (user) {
-      data = await users.findByIdAndUpdate(id, {
-        withDraw: user?.withDraw + Number(desposit),
-        vip: vip,
+      data = await users.findByIdAndUpdate(
+        id,
+        {
+          withDraw: despositMinutes
+            ? user?.withDraw - Number(despositMinutes)
+            : user?.withDraw + Number(desposit),
+          vip: vip,
+        },
+        { new: true }
+      );
+      createDeposit = await deposit.create({
+        deposit: Number(desposit),
+        users: user?._id,
       });
+      createDeposit.save();
     }
     return res.status(200).json({
       success: data ? true : false,
       data,
       message: data
-        ? "Đã nộp tiền thành công"
+        ? desposit
+          ? "Đã nộp tiền thành công"
+          : "Đã trừ tiền thành công"
         : "Nộp tiền thất bại! Vui lòng thử lại",
     });
   } catch (error) {
@@ -153,7 +169,7 @@ const withDrawAndDepositUser = async (req, res) => {
     const { currentUser } = req;
     const { id } = req.params;
     const { draw } = req.body;
-
+    console.log(draw);
     const user = await users.findById(id);
     if (!draw) {
       throw new Error("Vui lòng nhập số tiền");
@@ -166,8 +182,8 @@ const withDrawAndDepositUser = async (req, res) => {
       data = await users.findByIdAndUpdate(
         id,
         {
-          // withDraw: user?.withDraw - Number(draw),
-          withDraw: user?.withDraw,
+          withDraw: user?.withDraw - Number(draw),
+          // withDraw: user?.withDraw,
         },
         { new: true }
       );
@@ -218,15 +234,14 @@ const updatedStatusWithDraw = async (req, res) => {
     let findWithDraw = await withDraw.findById(WithDrawId);
     let user = await users.findById(userId);
     console.log(status);
-    if (findWithDraw && status === "Thành công") {
+    if (findWithDraw && status === "Không thành công") {
       updateBill = await users.findByIdAndUpdate(
         userId,
         {
-          withDraw: user?.withDraw - findWithDraw.withDraw,
+          withDraw: user?.withDraw + findWithDraw.withDraw,
         },
         { new: true }
       );
-      console.log(updateBill);
       if (updateBill) {
         let findBill = await withDraw.findByIdAndUpdate(
           WithDrawId,
@@ -239,7 +254,7 @@ const updatedStatusWithDraw = async (req, res) => {
         findBill.save();
       }
     }
-    if (findWithDraw && status === "Không thành công") {
+    if (findWithDraw && status === "Thành công") {
       updateBill = await withDraw.findByIdAndUpdate(
         WithDrawId,
         {
@@ -262,7 +277,33 @@ const updatedStatusWithDraw = async (req, res) => {
     });
   }
 };
-
+const getMyDeposit = async (req, res) => {
+  const { id } = req.currentUser;
+  try {
+    const dp = await deposit.find({ users: id }).sort({ createdAt: -1 });
+    return res.status(200).json({
+      success: dp ? true : false,
+      dp,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+const getAllDeposit = async (req, res) => {
+  try {
+    const dp = await deposit.find().sort({ createdAt: -1 });
+    return res.status(200).json({
+      success: dp ? true : false,
+      dp,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 module.exports = {
   getAllUsers,
   getCurrent,
@@ -272,4 +313,6 @@ module.exports = {
   getDeleteUserById,
   getGetUserById,
   DepositUser,
+  getMyDeposit,
+  getAllDeposit,
 };

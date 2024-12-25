@@ -23,24 +23,24 @@ app.use(
 
 connectDB();
 initRoutes(app);
-setInterval(() => {
-  countdown--;
+// setInterval(() => {
+//   countdown--;
 
-  if (countdown < 0) {
-    countdown = 180; // Reset to 3 minutes
-  }
+//   if (countdown < 0) {
+//     countdown = 180; // Reset to 3 minutes
+//   }
 
-  io.emit("countdown", countdown);
-}, 1000);
-io.on("connection", (socket) => {
-  console.log("New client connected");
-  socket.emit("countdown", countdown); // Send the current countdown on connection
+//   io.emit("countdown", countdown);
+// }, 1000);
+// io.on("connection", (socket) => {
+//   console.log("New client connected");
+//   socket.emit("countdown", countdown); // Send the current countdown on connection
 
-  socket.on("disconnect", () => {
-    console.log("Client disconnected");
-  });
-});
+//   socket.on("disconnect", () => {
+//     console.log("Client disconnected");
+//   });
+// });
 
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server is listening on ${PORT}`);
 });

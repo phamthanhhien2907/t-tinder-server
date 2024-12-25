@@ -7,6 +7,8 @@ const {
   getDeleteUserById,
   getGetUserById,
   DepositUser,
+  getAllDeposit,
+  getMyDeposit,
 } = require("../controllers/userController");
 const { verifyToken, isAdmin } = require("../middlewares/verifyToken");
 const router = require("express").Router();
@@ -14,6 +16,9 @@ router.get("/", [verifyToken], getAllUsers);
 router.get("/getUserById/:id", [verifyToken], getGetUserById);
 
 router.get("/get-current", verifyToken, getCurrent);
+router.get("/myDeposit", verifyToken, getMyDeposit);
+router.get("/deposit", verifyToken, getAllDeposit);
+
 router.put("/update/:id", verifyToken, updatedUser);
 router.put("/update/desposit/:id", [verifyToken, isAdmin], DepositUser);
 

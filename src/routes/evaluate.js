@@ -41,7 +41,6 @@ const storage = multer.diskStorage({
     return cb(null, "./public/images");
   },
   filename: function (req, file, cb) {
-    console.log(file.originalname);
     return cb(null, `${Date.now()}_${file.originalname}`);
   },
 });
@@ -55,6 +54,7 @@ router.post(
 router.put(
   "/lottery/updateResult/:roomId",
   [verifyToken, isAdmin],
+  upload.fields([{ name: "image", maxCount: 1 }]),
   updateLotteryResult
 );
 

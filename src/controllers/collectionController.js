@@ -25,12 +25,12 @@ const createCollection = async (req, res) => {
 const updateCollectionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, image, video, category } = req.body;
-    console.log(id, title, image, video, category);
+    const { title, images, videos, category } = req.body;
+    console.log(id, title, images, videos, category);
     const newCollection = await collection.findByIdAndUpdate(id, {
       title,
-      image: req?.files?.images[0]?.filename,
-      video: req?.files?.videos[0]?.filename,
+      image: images?.length > 0 ? images : req?.files?.images[0]?.filename,
+      video: videos?.length > 0 ? videos : req?.files?.videos[0]?.filename,
       category,
     });
     console.log(newCollection);
