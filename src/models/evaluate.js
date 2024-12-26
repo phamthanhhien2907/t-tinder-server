@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const categoryBelt = require("./categoryBelt");
 const evaluateSchema = new mongoose.Schema(
   {
     period: {
@@ -38,4 +39,14 @@ const evaluateSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+evaluateSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) {
+    // Nếu tài liệu bị xóa tồn tại
+    await categoryBelt.updateMany(
+      { rooms: doc._id },
+      { $pull: { rooms: doc._id } }
+    );
+  }
+});
+
 module.exports = mongoose.model("Evaluate", evaluateSchema);

@@ -26,14 +26,12 @@ const updateCollectionById = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, images, videos, category } = req.body;
-    console.log(id, title, images, videos, category);
     const newCollection = await collection.findByIdAndUpdate(id, {
       title,
       image: images?.length > 0 ? images : req?.files?.images[0]?.filename,
       video: videos?.length > 0 ? videos : req?.files?.videos[0]?.filename,
       category,
     });
-    console.log(newCollection);
     return res.status(200).json({
       success: newCollection
         ? "Successfully updated"
@@ -87,7 +85,6 @@ const getCollectionById = async (req, res) => {
 const updateCollection = async (req, res) => {
   try {
     const { id, userId } = req.params;
-    console.log(id, userId);
     let data = await collection.findById(id);
     let user = await users.findById(userId);
     if (!user) throw new Error("User not found");
@@ -96,7 +93,6 @@ const updateCollection = async (req, res) => {
     const { title, image, video, view } = req.body;
     // if (!title || !image || !video) throw new Error("Invalid");
     const filterViewUser = !data?.view?.includes(user?._id);
-    console.log(filterViewUser);
     if (filterViewUser) {
       data = await collection.findByIdAndUpdate(id, {
         $push: { view: user?._id },

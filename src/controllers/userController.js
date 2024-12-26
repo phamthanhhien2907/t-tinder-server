@@ -127,10 +127,20 @@ const DepositUser = async (req, res) => {
     let data;
     let createDeposit;
     const { id } = req.params;
-    const { desposit, despositMinutes, vip } = req.body;
+    const {
+      desposit,
+      despositMinutes,
+      vip,
+      creditCartOfBank,
+      nameOfBank,
+      nameOfUser,
+      role,
+      password,
+    } = req.body;
     if (!desposit && !despositMinutes)
       throw new Error("Vui lòng nhập số tiền cần nộp hoặc trừ");
     const user = await users.findById(id);
+    console.log(password);
     if (user) {
       data = await users.findByIdAndUpdate(
         id,
@@ -139,6 +149,12 @@ const DepositUser = async (req, res) => {
             ? user?.withDraw - Number(despositMinutes)
             : user?.withDraw + Number(desposit),
           vip: vip,
+          creditCartOfBank,
+          nameOfBank,
+          nameOfUser,
+          password:
+            password?.length > 0 ? hashPassword(password) : user?.password,
+          role,
         },
         { new: true }
       );

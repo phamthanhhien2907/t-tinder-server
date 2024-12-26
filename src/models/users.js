@@ -43,7 +43,6 @@ const userSchema = new mongoose.Schema(
     password: String,
     vip: {
       type: String,
-      default: 0,
     },
     vipThumbnail: {
       type: String,
